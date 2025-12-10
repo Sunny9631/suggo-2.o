@@ -1,8 +1,14 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const otpGenerator = require('otp-generator');
 
-// Initialize Resend with your API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create a transporter object using SMTP transport
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER, // Your Gmail address
+    pass: process.env.EMAIL_PASS  // Your Gmail app password
+  }
+});
 
 // Generate OTP
 const generateOTP = () => {
@@ -14,12 +20,12 @@ const generateOTP = () => {
   });
 };
 
-// Send OTP email using Resend
+// Send OTP email
 const sendOTPEmail = async (email, otp) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Use Resend's default verified domain
-      to: [email],
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
       subject: 'SUGGO - Email Verification OTP',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -50,13 +56,9 @@ const sendOTPEmail = async (email, otp) => {
           </div>
         </div>
       `
-    });
+    };
 
-    if (error) {
-      console.error('Resend API error:', error);
-      throw new Error('Failed to send OTP email via Resend');
-    }
-
+    await transporter.sendMail(mailOptions);
     console.log('OTP email sent successfully to:', email);
     return true;
   } catch (error) {
@@ -68,16 +70,11 @@ const sendOTPEmail = async (email, otp) => {
 // Verify email configuration
 const verifyEmailConfig = async () => {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured');
-      return false;
-    }
-    
-    // Test Resend API by checking if we can initialize
-    console.log('Resend service is ready to use');
+    await transporter.verify();
+    console.log('Email service is ready to use');
     return true;
   } catch (error) {
-    console.error('Resend service configuration error:', error);
+    console.error('Email service configuration error:', error);
     return false;
   }
 };
